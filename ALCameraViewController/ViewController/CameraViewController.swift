@@ -28,31 +28,35 @@ public extension CameraViewController {
         
         return imagePicker
         
-//        let imagePicker = PhotoLibraryViewController()
-//        let navigationController = UINavigationController(rootViewController: imagePicker)
-//        
-//        navigationController.navigationBar.barTintColor = UIColor.blackColor()
-//        navigationController.navigationBar.barStyle = UIBarStyle.Black
-//        navigationController.modalTransitionStyle = UIModalTransitionStyle.CrossDissolve
-//        
-//        imagePicker.onSelectionComplete = { asset in
-//            if let asset = asset {
-//                let confirmController = ConfirmViewController(asset: asset, allowsCropping: croppingEnabled)
-//                confirmController.onComplete = { image, asset in
-//                    if let image = image, asset = asset {
-//                        completion(image, asset)
-//                    } else {
-//                        imagePicker.dismissViewControllerAnimated(true, completion: nil)
-//                    }
-//                }
-//                confirmController.modalTransitionStyle = UIModalTransitionStyle.CrossDissolve
-//                imagePicker.presentViewController(confirmController, animated: true, completion: nil)
-//            } else {
-//                completion(nil, nil)
-//            }
-//        }
-//        
-//        return navigationController
+        /**
+        - This is the custom imagePicker from the original library
+        - TODO: have this be an option in intialization
+        */
+        //        let imagePicker = PhotoLibraryViewController()
+        //        let navigationController = UINavigationController(rootViewController: imagePicker)
+        //
+        //        navigationController.navigationBar.barTintColor = UIColor.blackColor()
+        //        navigationController.navigationBar.barStyle = UIBarStyle.Black
+        //        navigationController.modalTransitionStyle = UIModalTransitionStyle.CrossDissolve
+        //
+        //        imagePicker.onSelectionComplete = { asset in
+        //            if let asset = asset {
+        //                let confirmController = ConfirmViewController(asset: asset, allowsCropping: croppingEnabled)
+        //                confirmController.onComplete = { image, asset in
+        //                    if let image = image, asset = asset {
+        //                        completion(image, asset)
+        //                    } else {
+        //                        imagePicker.dismissViewControllerAnimated(true, completion: nil)
+        //                    }
+        //                }
+        //                confirmController.modalTransitionStyle = UIModalTransitionStyle.CrossDissolve
+        //                imagePicker.presentViewController(confirmController, animated: true, completion: nil)
+        //            } else {
+        //                completion(nil, nil)
+        //            }
+        //        }
+        //
+        //        return navigationController
     }
 }
 
@@ -62,6 +66,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
     var allowCropping = false
     var onCompletion: CameraViewCompletion?
     var volumeControl: VolumeControl?
+    var activityIndicatorView: UIActivityIndicatorView?
     
     let cameraView : CameraView = {
         let cameraView = CameraView()
@@ -128,7 +133,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
                         forState: .Normal)
         return button
     }()
-  
+    
     public init(croppingEnabled: Bool, allowsLibraryAccess: Bool = true, completion: CameraViewCompletion) {
         super.init(nibName: nil, bundle: nil)
         onCompletion = completion
@@ -137,7 +142,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
         libraryButton.enabled = allowsLibraryAccess
         libraryButton.hidden = !allowsLibraryAccess
     }
-  
+    
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -182,6 +187,27 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
             didUpdateViews = true
         }
         super.updateViewConstraints()
+    }
+    
+    func configIndicatorView() {
+        activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .White)
+        activityIndicatorView!.frame = CGRectMake(0, 0, 50, 50)
+        activityIndicatorView!.layer.cornerRadius = activityIndicatorView!.frame.size.width/2
+        activityIndicatorView!.layer.masksToBounds = true
+        activityIndicatorView!.backgroundColor = UIColor.init(colorLiteralRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.5);
+        cameraButton.addSubview(activityIndicatorView!)
+        activityIndicatorView!.center = CGPointMake(40, 40)
+        self.hideIndicator()
+    }
+    
+    func showIndicator() {
+        activityIndicatorView?.hidden = false
+        activityIndicatorView?.startAnimating()
+    }
+    
+    func hideIndicator() {
+        activityIndicatorView?.hidden = true
+        activityIndicatorView?.stopAnimating()
     }
     
     func configCameraViewConstraints() {
@@ -318,10 +344,10 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
     
     public override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(rotate), name: UIDeviceOrientationDidChangeNotification, object: nil)
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(cameraReady), name: AVCaptureSessionDidStartRunningNotification, object: nil)
-
+        
         cameraButton.enabled = false
         
         volumeControl = VolumeControl(view: view) { [weak self] _ in
@@ -338,6 +364,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
         rotate()
         
         cameraView.configureFocus()
+        configIndicatorView()
     }
     
     public override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
@@ -359,7 +386,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
     internal func cameraReady() {
         cameraButton.enabled = true
     }
-
+    
     internal func rotate() {
         let rotation = currentRotation()
         let rads = CGFloat(radians(rotation))
@@ -412,6 +439,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
             closeButton.enabled = false
             swapButton.enabled = false
             libraryButton.enabled = false
+            self.showIndicator()
             cameraView.capturePhoto { image in
                 guard let image = image else {
                     self.cameraButton.enabled = true
@@ -429,9 +457,11 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
         SingleImageSaver()
             .setImage(image)
             .onSuccess { asset in
+                self.hideIndicator()
                 self.layoutCameraResult(asset)
             }
             .onFailure { error in
+                self.hideIndicator()
                 self.cameraButton.enabled = true
                 self.closeButton.enabled = true
                 self.swapButton.enabled = true
@@ -521,7 +551,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
         confirmViewController.modalTransitionStyle = UIModalTransitionStyle.CoverVertical
         
         presentViewController(confirmViewController, animated: true, completion: nil)
-
+        
         cameraButton.enabled = true
         closeButton.enabled = true
         swapButton.enabled = true
