@@ -493,17 +493,21 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
                 if let i = image {
                     self.onCompletion!(i, creationDate)
                 } else {
-                    self.dismissViewControllerAnimated(true, completion: nil)
+                    self.dismissViewControllerAnimated(false, completion: nil)
                 }
             }
             confirmController.modalTransitionStyle = UIModalTransitionStyle.CoverVertical
-            picker.presentViewController(confirmController, animated: true, completion: nil)
+            picker.presentViewController(confirmController, animated: false, completion: nil)
         }
+    }
+
+    public func imagePickerControllerDidCancel(picker: UIImagePickerController) {
+        self.dismissViewControllerAnimated(false, completion: nil)
     }
     
     internal func showLibrary() {
         let imagePicker = CameraViewController.imagePickerViewController(allowCropping, imagePickerDelegate: self) { image, asset in
-            self.dismissViewControllerAnimated(true, completion: nil)
+            self.dismissViewControllerAnimated(false, completion: nil)
             
             guard let image = image, asset = asset else {
                 return
@@ -512,7 +516,7 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
             self.onCompletion?(image, asset)
         }
         
-        presentViewController(imagePicker, animated: true) {
+        presentViewController(imagePicker, animated: false) {
             self.cameraView.stopSession()
         }
     }
@@ -545,12 +549,12 @@ public class CameraViewController: UIViewController, UIImagePickerControllerDele
             if let image = image, asset = asset {
                 self.onCompletion?(image, asset)
             } else {
-                self.dismissViewControllerAnimated(true, completion: nil)
+                self.dismissViewControllerAnimated(false, completion: nil)
             }
         }
         confirmViewController.modalTransitionStyle = UIModalTransitionStyle.CoverVertical
         
-        presentViewController(confirmViewController, animated: true, completion: nil)
+        presentViewController(confirmViewController, animated: false, completion: nil)
         
         cameraButton.enabled = true
         closeButton.enabled = true
